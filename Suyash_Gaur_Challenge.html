@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Risk &amp; Default Prediction Report</title>
+    <style>
+        /* ===== RESET & BASE STYLE ===== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            padding: 28px;
+        }
+
+        /* ===== CONTAINER ===== */
+        .dashboard-container {
+            max-width: 1240px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 28px 36px 36px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .header-left h1 {
+            font-size: 25px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.6px;
+            margin-bottom: 4px;
+        }
+        .header-left .subtitle {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .header-right {
+            text-align: right;
+            font-size: 12.5px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        .header-right .as-of strong, 
+        .header-right .model strong {
+            color: #334155;
+            font-weight: 600;
+        }
+
+        /* ===== GRID ===== */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        /* ===== CARD ===== */
+        .card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #e11d48; /* Crimson Vertical Accent Border */
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.01);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.04);
+        }
+        .card-header {
+            margin-bottom: 16px;
+        }
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 2px;
+        }
+        .card-subtitle {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        /* ===== CARD 1: KEY RISK METRICS ===== */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            flex: 1;
+        }
+        .metric-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .metric-label {
+            font-size: 9px;
+            font-weight: 600;
+            color: #64748b;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .metric-value-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .metric-value {
+            font-size: 21px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .metric-change {
+            font-size: 11.5px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .metric-change.red {
+            color: #e11d48;
+        }
+        .metric-change.green {
+            color: #10b981;
+        }
+
+        /* ===== CHART WRAPPER ===== */
+        .chart-wrapper {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* ===== LEGEND STYLING ===== */
+        .legend-row {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 12px;
+            font-size: 10.5px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Premium line+dot indicators for legends */
+        .legend-indicator {
+            width: 22px;
+            height: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .legend-indicator::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: currentColor;
+        }
+        .legend-indicator.dashed::before {
+            background: none;
+            border-top: 2px dashed currentColor;
+        }
+        .legend-indicator::after {
+            content: "";
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .legend-indicator.square::after {
+            border-radius: 0;
+            width: 6px;
+            height: 6px;
+        }
+        
+        .legend-color-box {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        /* ===== CARD 6 & CARD 8: BAR CHART LISTS ===== */
+        .bar-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            justify-content: center;
+        }
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .bar-label {
+            font-size: 11.5px;
+            font-weight: 500;
+            color: #475569;
+            width: 85px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        .bar-track {
+            flex: 1;
+            height: 16px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.4s ease;
+        }
+        .bar-value {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #0f172a;
+            width: 32px;
+            text-align: left;
+            flex-shrink: 0;
+        }
+        .ticks-row {
+            margin-left: 95px;
+            margin-right: 42px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+        }
+        .tick-label {
+            font-size: 9.5px;
+            color: #94a3b8;
+            font-weight: 500;
+            text-align: center;
+            width: 12px;
+        }
+
+        /* ===== CARD 5: GAUGE CHART ===== */
+        .gauge-center-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: -12px;
+        }
+        .gauge-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 164px;
+            font-size: 10.5px;
+            font-weight: 600;
+            margin-top: -8px;
+        }
+        .gauge-labels .low {
+            color: #10b981;
+        }
+        .gauge-labels .high {
+            color: #e11d48;
+        }
+        .gauge-subtext {
+            font-size: 10.5px;
+            color: #94a3b8;
+            font-weight: 500;
+            margin-top: 6px;
+        }
+
+        /* ===== RESPONSIVENESS ===== */
+        @media (max-width: 1120px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .dashboard-container {
+                padding: 20px;
+            }
+            body {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        
+        <!-- ===== HEADER ===== -->
+        <div class="header">
+            <div class="header-left">
+                <h1>Credit Risk &amp; Default Prediction Report</h1>
+                <div class="subtitle">Portfolio risk analytics &nbsp;·&nbsp; Current vs. AI-Predicted (FY2025) &nbsp;·&nbsp; Confidential</div>
+            </div>
+            <div class="header-right">
+                <div class="as-of">As of: <strong>Q4 2025</strong></div>
+                <div class="model">Model: <strong>PD / LGD v3.2</strong></div>
+            </div>
+        </div>
+
+        <!-- ===== DASHBOARD GRID ===== -->
+        <div class="grid">
+
+            <!-- Card 1: Key Risk Metrics -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Key Risk Metrics</h2>
+                    <p class="card-subtitle">Current &rarr; Predicted</p>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <div class="metric-label">AVG PORTFOLIO PD</div>
+                        <div class="metric-value-row">
+                            <span class="metric-value">2.5%</span>
+                            <span class="metric-change red">▲ 2.8%</span>
+                        </div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">EXPECTED LOSS (EL)</div>
+                        <div class="metric-value-row">
+                            <span class="metric-value">$1.2M</span>
+                            <span class="metric-change red">▲ $1.4M</span>
+                        </div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">HIGH-RISK CUSTOMERS</div>
+                        <div class="metric-value-row">
+                            <span class="metric-value">15%</span>
+                            <span class="metric-change red">▲ 17%</span>
+                        </div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">TOTAL EXPOSURE</div>
+                        <div class="metric-value-row">
+                            <span class="metric-value">$84.0M</span>
+                            <span class="metric-change red">▲ $86.3M</span>
+                        </div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">NPL RATIO</div>
+                        <div class="metric-value-row">
+                            <span class="metric-value">3.1%</span>
+                            <span class="metric-change red">▲ 3.6%</span>
+                        </div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-label">RECOVERY RATE</div>
+                        <div class="metric-value-row">
+                            <span class="metric-value">41%</span>
+                            <span class="metric-change green">▲ 43%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Probability of Default Trend -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Probability of Default Trend</h2>
+                    <p class="card-subtitle">Portfolio average, % (2021&ndash;2025)</p>
+                </div>
+                <div class="legend-row" style="justify-content: flex-start;">
+                    <div class="legend-item">
+                        <span class="legend-indicator" style="color: #3b82f6;"></span>
+                        <span>Actual</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-indicator dashed" style="color: #e11d48;"></span>
+                        <span>Predicted</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-indicator square" style="color: #94a3b8;"></span>
+                        <span>Industry</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <svg viewBox="0 0 320 160" width="100%" height="160">
+                        <defs>
+                            <linearGradient id="chart2-gradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.1" />
+                                <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0" />
+                            </linearGradient>
+                        </defs>
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="36" y1="20" x2="300" y2="20" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="50" x2="300" y2="50" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="80" x2="300" y2="80" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="110" x2="300" y2="110" stroke="#f1f5f9" stroke-width="1" />
+
+                        <!-- Y-Axis Labels -->
+                        <text x="28" y="24" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">2.8</text>
+                        <text x="28" y="54" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">2.6</text>
+                        <text x="28" y="84" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">2.4</text>
+                        <text x="28" y="114" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">2.2</text>
+
+                        <!-- X-Axis Labels -->
+                        <text x="60" y="132" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">2021</text>
+                        <text x="115" y="132" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">2022</text>
+                        <text x="170" y="132" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">2023</text>
+                        <text x="225" y="132" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">2024</text>
+                        <text x="280" y="132" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">2025</text>
+
+                        <!-- Shaded Area Under Actual -->
+                        <path d="M 60,110 L 60,110 L 115,87.5 L 170,72.5 L 225,57.5 L 280,47 L 280,110 Z" fill="url(#chart2-gradient)" />
+
+                        <!-- Industry line (grey, solid with square dots) -->
+                        <path d="M 60,65 L 115,57.5 L 170,65 L 225,50 L 280,42.5" fill="none" stroke="#94a3b8" stroke-width="2" />
+                        <rect x="57" y="62" width="6" height="6" fill="#94a3b8" />
+                        <rect x="112" y="54.5" width="6" height="6" fill="#94a3b8" />
+                        <rect x="167" y="62" width="6" height="6" fill="#94a3b8" />
+                        <rect x="222" y="47" width="6" height="6" fill="#94a3b8" />
+                        <rect x="277" y="39.5" width="6" height="6" fill="#94a3b8" />
+
+                        <!-- Actual line (blue, solid with circle dots) -->
+                        <path d="M 60,110 L 115,87.5 L 170,72.5 L 225,57.5 L 280,47" fill="none" stroke="#3b82f6" stroke-width="2.5" />
+                        <circle cx="60" cy="110" r="3.5" fill="#3b82f6" />
+                        <circle cx="115" cy="87.5" r="3.5" fill="#3b82f6" />
+                        <circle cx="170" cy="72.5" r="3.5" fill="#3b82f6" />
+                        <circle cx="225" cy="57.5" r="3.5" fill="#3b82f6" />
+                        <circle cx="280" cy="47" r="3.5" fill="#3b82f6" />
+
+                        <!-- Predicted line (red, dashed with circle dots) -->
+                        <path d="M 60,102.5 L 115,80 L 170,65 L 225,42.5 L 280,20" fill="none" stroke="#e11d48" stroke-width="2" stroke-dasharray="4,3" />
+                        <circle cx="60" cy="102.5" r="3.5" fill="#e11d48" />
+                        <circle cx="115" cy="80" r="3.5" fill="#e11d48" />
+                        <circle cx="170" cy="65" r="3.5" fill="#e11d48" />
+                        <circle cx="225" cy="42.5" r="3.5" fill="#e11d48" />
+                        <circle cx="280" cy="20" r="3.5" fill="#e11d48" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 3: PD Distribution by Segment -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">PD Distribution by Segment</h2>
+                    <p class="card-subtitle">Current vs. predicted, % default</p>
+                </div>
+                <div class="legend-row" style="justify-content: flex-end;">
+                    <div class="legend-item">
+                        <span class="legend-color-box" style="background: #3b82f6;"></span>
+                        <span>Current</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color-box" style="background: #ec4899;"></span>
+                        <span>Predicted</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <svg viewBox="0 0 300 160" width="100%" height="160">
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="28" y1="20" x2="290" y2="20" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="50" x2="290" y2="50" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="80" x2="290" y2="80" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="110" x2="290" y2="110" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="140" x2="290" y2="140" stroke="#f1f5f9" stroke-width="1" />
+
+                        <!-- Y-Axis Labels -->
+                        <text x="20" y="24" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">4</text>
+                        <text x="20" y="54" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">3</text>
+                        <text x="20" y="84" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">2</text>
+                        <text x="20" y="114" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">1</text>
+                        <text x="20" y="144" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">0</text>
+
+                        <!-- Retail Bars -->
+                        <rect x="45" y="92" width="16" height="48" rx="2" fill="#3b82f6" />
+                        <rect x="63" y="86" width="16" height="54" rx="2" fill="#ec4899" />
+
+                        <!-- SME Bars -->
+                        <rect x="110" y="50" width="16" height="90" rx="2" fill="#3b82f6" />
+                        <rect x="128" y="38" width="16" height="102" rx="2" fill="#ec4899" />
+
+                        <!-- Corporate Bars -->
+                        <rect x="175" y="80" width="16" height="60" rx="2" fill="#3b82f6" />
+                        <rect x="193" y="71" width="16" height="69" rx="2" fill="#ec4899" />
+
+                        <!-- Mortgage Bars -->
+                        <rect x="240" y="104" width="16" height="36" rx="2" fill="#3b82f6" />
+                        <rect x="258" y="101" width="16" height="39" rx="2" fill="#ec4899" />
+
+                        <!-- X-Axis Labels -->
+                        <text x="62" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">Retail</text>
+                        <text x="127" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">SME</text>
+                        <text x="192" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">Corporate</text>
+                        <text x="257" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">Mortgage</text>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 4: Risk Exposure Matrix -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Risk Exposure Matrix</h2>
+                    <p class="card-subtitle">Exposure by segment &amp; risk category</p>
+                </div>
+                <div class="legend-row" style="justify-content: flex-end; display: grid; grid-template-columns: repeat(2, auto); gap: 6px 12px; margin-bottom: 8px;">
+                    <div class="legend-item">
+                        <span class="legend-color-box" style="background: #3b82f6;"></span>
+                        <span>Retail</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color-box" style="background: #f59e0b;"></span>
+                        <span>Corporate</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color-box" style="background: #ec4899;"></span>
+                        <span>SME</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color-box" style="background: #06b6d4;"></span>
+                        <span>Mortgage</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <svg viewBox="0 0 300 160" width="100%" height="160">
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="36" y1="20" x2="280" y2="20" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="60" x2="280" y2="60" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="100" x2="280" y2="100" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="140" x2="280" y2="140" stroke="#f1f5f9" stroke-width="1" />
+
+                        <!-- Y-Axis Labels -->
+                        <text x="28" y="24" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">300</text>
+                        <text x="28" y="64" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">200</text>
+                        <text x="28" y="104" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">100</text>
+                        <text x="28" y="144" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">0</text>
+
+                        <!-- Rotated Y-Axis Title -->
+                        <text x="-80" y="10" fill="#94a3b8" font-size="9" font-weight="600" transform="rotate(-90)" text-anchor="middle">Exposure ($M)</text>
+
+                        <!-- Low Stack (base y=140) -->
+                        <rect x="54" y="100" width="42" height="40" fill="#3b82f6" />
+                        <rect x="54" y="84" width="42" height="16" fill="#ec4899" />
+                        <rect x="54" y="28" width="42" height="56" fill="#f59e0b" />
+                        <rect x="54" y="20" width="42" height="8" fill="#06b6d4" />
+
+                        <!-- Medium Stack -->
+                        <rect x="129" y="120" width="42" height="20" fill="#3b82f6" />
+                        <rect x="129" y="88" width="42" height="32" fill="#ec4899" />
+                        <rect x="129" y="48" width="42" height="40" fill="#f59e0b" />
+                        <rect x="129" y="30" width="42" height="18" fill="#06b6d4" />
+
+                        <!-- High Stack -->
+                        <rect x="204" y="132" width="42" height="8" fill="#3b82f6" />
+                        <rect x="204" y="68" width="42" height="64" fill="#ec4899" />
+                        <rect x="204" y="60" width="42" height="8" fill="#f59e0b" />
+                        <rect x="204" y="54" width="42" height="6" fill="#06b6d4" />
+
+                        <!-- X-Axis Labels -->
+                        <text x="75" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">Low</text>
+                        <text x="150" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">Medium</text>
+                        <text x="225" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">High</text>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 5: Overall Portfolio Risk Score -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Overall Portfolio Risk Score</h2>
+                    <p class="card-subtitle">0 = low risk, 100 = high risk &nbsp;·&nbsp; Elevated</p>
+                </div>
+                <div class="chart-wrapper" style="align-items: center;">
+                    <svg viewBox="0 0 260 180" width="260" height="180" aria-label="Risk score 68 out of 100">
+                        <!-- Three equal risk bands, separated to match the reference gauge -->
+                        <path d="M 30,115 A 100,100 0 0,1 78,28" fill="none" stroke="#00b884" stroke-width="25" stroke-linecap="butt" />
+                        <path d="M 82,28 A 100,100 0 0,1 178,28" fill="none" stroke="#ffbe28" stroke-width="25" stroke-linecap="butt" />
+                        <path d="M 182,28 A 100,100 0 0,1 230,115" fill="none" stroke="#f72564" stroke-width="25" stroke-linecap="butt" />
+
+                        <!-- Indicator needle at 68 -->
+                        <line x1="130" y1="115" x2="183.6" y2="30.6" stroke="#334155" stroke-width="4" stroke-linecap="round" />
+                        <circle cx="183.6" cy="30.6" r="7" fill="#ffffff" stroke="#334155" stroke-width="3" />
+                        <circle cx="130" cy="115" r="7" fill="#334155" />
+
+                        <text x="24" y="137" fill="#00b884" font-size="12" font-weight="600">Low</text>
+                        <text x="236" y="137" text-anchor="end" fill="#f72564" font-size="12" font-weight="600">High</text>
+                        <text x="130" y="158" text-anchor="middle" fill="#1e293b" font-size="44" font-weight="800">68</text>
+                        <text x="130" y="179" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="500">Risk Score / 100</text>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 6: Loss Given Default (LGD) -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Loss Given Default (LGD)</h2>
+                    <p class="card-subtitle">By product, %</p>
+                </div>
+                <div class="bar-list">
+                    <div class="bar-row">
+                        <span class="bar-label">Credit Card</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 85%; background: #f43f5e;"></div></div>
+                        <span class="bar-value">68%</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Personal Loan</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 68.75%; background: #f59e0b;"></div></div>
+                        <span class="bar-value">55%</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Auto</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 56.25%; background: #eab308;"></div></div>
+                        <span class="bar-value">45%</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">SME Loan</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 47.5%; background: #06b6d4;"></div></div>
+                        <span class="bar-value">38%</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Mortgage</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 27.5%; background: #06b6d4;"></div></div>
+                        <span class="bar-value">22%</span>
+                    </div>
+                    <div class="ticks-row">
+                        <span class="tick-label">0</span>
+                        <span class="tick-label">10</span>
+                        <span class="tick-label">20</span>
+                        <span class="tick-label">30</span>
+                        <span class="tick-label">40</span>
+                        <span class="tick-label">50</span>
+                        <span class="tick-label">60</span>
+                        <span class="tick-label">70</span>
+                        <span class="tick-label">80</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 7: Vintage Default Curves -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Vintage Default Curves</h2>
+                    <p class="card-subtitle">Cumulative default % by months on book</p>
+                </div>
+                <div class="legend-row" style="justify-content: flex-start; gap: 14px; margin-bottom: 8px;">
+                    <div class="legend-item">
+                        <span style="color: #0d9488; font-weight: bold; margin-right: 4px;">&larr;</span>
+                        <span style="color: #64748b; font-size: 10px; font-weight: 600;">2022</span>
+                    </div>
+                    <div class="legend-item">
+                        <span style="color: #3b82f6; font-weight: bold; margin-right: 4px;">&larr;</span>
+                        <span style="color: #64748b; font-size: 10px; font-weight: 600;">2023</span>
+                    </div>
+                    <div class="legend-item">
+                        <span style="color: #64748b; font-weight: bold; margin-right: 4px;">&larr;</span>
+                        <span style="color: #64748b; font-size: 10px; font-weight: 600;">2024</span>
+                    </div>
+                    <div class="legend-item">
+                        <span style="color: #e11d48; font-weight: bold; margin-right: 4px;">&larr;</span>
+                        <span style="color: #64748b; font-size: 10px; font-weight: 600;">2025E</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <svg viewBox="0 0 320 160" width="100%" height="160">
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="36" y1="20" x2="280" y2="20" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="50" x2="280" y2="50" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="80" x2="280" y2="80" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="110" x2="280" y2="110" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="36" y1="140" x2="280" y2="140" stroke="#f1f5f9" stroke-width="1" />
+
+                        <!-- Y-Axis Labels -->
+                        <text x="28" y="24" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">2.0</text>
+                        <text x="28" y="54" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">1.5</text>
+                        <text x="28" y="84" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">1.0</text>
+                        <text x="28" y="114" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">0.5</text>
+                        <text x="28" y="144" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">0.0</text>
+
+                        <!-- Curves (Straight segments make dots align perfectly) -->
+                        <!-- 2022 (Teal) -->
+                        <path d="M 50,140 L 107.5,110 L 165,98 L 222.5,91 L 280,86" fill="none" stroke="#0d9488" stroke-width="2" />
+                        <circle cx="50" cy="140" r="3" fill="#0d9488" />
+                        <circle cx="107.5" cy="110" r="3" fill="#0d9488" />
+                        <circle cx="165" cy="98" r="3" fill="#0d9488" />
+                        <circle cx="222.5" cy="91" r="3" fill="#0d9488" />
+                        <circle cx="280" cy="86" r="3" fill="#0d9488" />
+
+                        <!-- 2023 (Blue) -->
+                        <path d="M 50,140 L 107.5,100 L 165,83 L 222.5,75 L 280,69" fill="none" stroke="#3b82f6" stroke-width="2" />
+                        <circle cx="50" cy="140" r="3" fill="#3b82f6" />
+                        <circle cx="107.5" cy="100" r="3" fill="#3b82f6" />
+                        <circle cx="165" cy="83" r="3" fill="#3b82f6" />
+                        <circle cx="222.5" cy="75" r="3" fill="#3b82f6" />
+                        <circle cx="280" cy="69" r="3" fill="#3b82f6" />
+
+                        <!-- 2024 (Grey) -->
+                        <path d="M 50,140 L 107.5,91 L 165,70 L 222.5,56 L 280,49" fill="none" stroke="#64748b" stroke-width="2" />
+                        <circle cx="50" cy="140" r="3" fill="#64748b" />
+                        <circle cx="107.5" cy="91" r="3" fill="#64748b" />
+                        <circle cx="165" cy="70" r="3" fill="#64748b" />
+                        <circle cx="222.5" cy="56" r="3" fill="#64748b" />
+                        <circle cx="280" cy="49" r="3" fill="#64748b" />
+
+                        <!-- 2025E (Red) -->
+                        <path d="M 50,140 L 107.5,82 L 165,58 L 222.5,41 L 280,32" fill="none" stroke="#e11d48" stroke-width="2" />
+                        <circle cx="50" cy="140" r="3" fill="#e11d48" />
+                        <circle cx="107.5" cy="82" r="3" fill="#e11d48" />
+                        <circle cx="165" cy="58" r="3" fill="#e11d48" />
+                        <circle cx="222.5" cy="41" r="3" fill="#e11d48" />
+                        <circle cx="280" cy="32" r="3" fill="#e11d48" />
+
+                        <!-- X-Axis Labels -->
+                        <text x="50" y="152" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">0</text>
+                        <text x="107.5" y="152" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">5</text>
+                        <text x="165" y="152" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">10</text>
+                        <text x="222.5" y="152" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">15</text>
+                        <text x="280" y="152" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="500">20</text>
+
+                        <!-- X-Axis Label Underline Text -->
+                        <text x="165" y="160" text-anchor="middle" fill="#64748b" font-size="9" font-weight="600">Months on book</text>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Card 8: Top Risk Drivers -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Top Risk Drivers</h2>
+                    <p class="card-subtitle">Model feature importance</p>
+                </div>
+                <div class="bar-list">
+                    <div class="bar-row">
+                        <span class="bar-label">Utilization</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 90%; background: #3b82f6;"></div></div>
+                        <span class="bar-value">0.27</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">DTI ratio</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 70%; background: #3b82f6;"></div></div>
+                        <span class="bar-value">0.21</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Delinq. 12m</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 60%; background: #3b82f6;"></div></div>
+                        <span class="bar-value">0.18</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Credit age</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 43%; background: #3b82f6;"></div></div>
+                        <span class="bar-value">0.13</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Income</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 40%; background: #3b82f6;"></div></div>
+                        <span class="bar-value">0.12</span>
+                    </div>
+                    <div class="bar-row">
+                        <span class="bar-label">Inquiries</span>
+                        <div class="bar-track"><div class="bar-fill" style="width: 30%; background: #3b82f6;"></div></div>
+                        <span class="bar-value">0.09</span>
+                    </div>
+                    <div class="ticks-row">
+                        <span class="tick-label">0.00</span>
+                        <span class="tick-label">0.05</span>
+                        <span class="tick-label">0.10</span>
+                        <span class="tick-label">0.15</span>
+                        <span class="tick-label">0.20</span>
+                        <span class="tick-label">0.25</span>
+                        <span class="tick-label">0.30</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 9: Default Rate by Region -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Default Rate by Region</h2>
+                    <p class="card-subtitle">Actual vs. target threshold, %</p>
+                </div>
+                <div class="chart-wrapper">
+                    <svg viewBox="0 0 300 160" width="100%" height="160">
+                        <!-- Horizontal Grid Lines -->
+                        <line x1="28" y1="20" x2="288" y2="20" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="44" x2="288" y2="44" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="68" x2="288" y2="68" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="92" x2="288" y2="92" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="116" x2="288" y2="116" stroke="#f1f5f9" stroke-width="1" />
+                        <line x1="28" y1="140" x2="288" y2="140" stroke="#f1f5f9" stroke-width="1" />
+
+                        <!-- Y-Axis Labels -->
+                        <text x="20" y="24" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">5</text>
+                        <text x="20" y="48" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">4</text>
+                        <text x="20" y="72" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">3</text>
+                        <text x="20" y="96" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">2</text>
+                        <text x="20" y="120" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">1</text>
+                        <text x="20" y="144" text-anchor="end" fill="#94a3b8" font-size="10" font-weight="500">0</text>
+
+                        <!-- Target Threshold line at 3.0% (y = 68) -->
+                        <line x1="28" y1="68" x2="288" y2="68" stroke="#cbd5e1" stroke-width="1.5" stroke-dasharray="4,4" />
+                        <text x="32" y="62" fill="#94a3b8" font-size="9" font-weight="600">Target 3.0%</text>
+
+                        <!-- NA Bar (2.4% -> height 57.6 -> y = 82.4) -->
+                        <rect x="45" y="82.4" width="36" height="57.6" rx="3" fill="#06b6d4" />
+                        <text x="63" y="76" text-anchor="middle" fill="#0f172a" font-size="10" font-weight="700">2.4%</text>
+
+                        <!-- EMEA Bar (2.9% -> height 69.6 -> y = 70.4) -->
+                        <rect x="105" y="70.4" width="36" height="69.6" rx="3" fill="#06b6d4" />
+                        <text x="123" y="64" text-anchor="middle" fill="#0f172a" font-size="10" font-weight="700">2.9%</text>
+
+                        <!-- APAC Bar (3.6% -> height 86.4 -> y = 53.6) -->
+                        <rect x="165" y="53.6" width="36" height="86.4" rx="3" fill="#e11d48" />
+                        <text x="183" y="47" text-anchor="middle" fill="#0f172a" font-size="10" font-weight="700">3.6%</text>
+
+                        <!-- LATAM Bar (4.2% -> height 100.8 -> y = 39.2) -->
+                        <rect x="225" y="39.2" width="36" height="100.8" rx="3" fill="#e11d48" />
+                        <text x="243" y="33" text-anchor="middle" fill="#0f172a" font-size="10" font-weight="700">4.2%</text>
+
+                        <!-- X-Axis Labels -->
+                        <text x="63" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">NA</text>
+                        <text x="123" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">EMEA</text>
+                        <text x="183" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">APAC</text>
+                        <text x="243" y="154" text-anchor="middle" fill="#475569" font-size="10" font-weight="500">LATAM</text>
+                    </svg>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>
